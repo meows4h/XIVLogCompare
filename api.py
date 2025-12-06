@@ -1,35 +1,76 @@
 from config import CLIENT_ID, CLIENT_SECRET
+from jobref import pct_ids
 from fflogsapi import FFLogsClient, GQLEnum
 
 
 client = FFLogsClient(CLIENT_ID, CLIENT_SECRET)
 
 
-def pull_player(info, player, idx):
+def get_pid(name, fight):
     ''''''
-    for entry in info[idx]:
-        if player in entry.values():
-            return entry
+    for player in fight.player_details():
+        if player.name == name:
+            return player.id
+
+
+def get_events(fight, cat):
+    ''''''
+    return fight.events({"dataType": GQLEnum(cat)})
+
+
+def get_fru_void(fight):
+    ''''''
+    enemies = fight.enemy_npcs()
+    for enemy in enemies:
+        if enemy.game_id == 17828:
+            return enemy.id
 
 
 def get_player_data(rid, number, player):
     ''''''
     report = client.get_report(rid)
     fight = report.fight(number)
-    damage = fight.events({"dataType": GQLEnum("DamageDone")})
-    casts = fight.events({"dataType": GQLEnum("Casts")})
-    summary = fight.table({"dataType": GQLEnum("Summary")})
-    events = fight.events({"dataType": GQLEnum("All")})
-    
-    print(casts)
-    print(damage)
-    #print(events)
+    pid = get_pid(player, fight)
+    damage = get_events(fight, "DamageDone")
+    # casts = get_events(fight, "Casts")
+    duration = fight.duration()
+    encounter = fight.encounter().name()
+
+    void_id = -1
+    if encounter == "Futures Rewritten":
+        void_id = get_fru_void(fight)
+
+    player_damage = []
+
+    for idx in damage:
+        if "sourceID" in idx:
+            if idx["sourceID"] == pid:
+                player_damage.append(idx)
+
+    pct_id = pct_ids()
+    dmg_count = {}
+    # mode = "calculateddamage"
+    mode = "damage"
+
+    for idx in player_damage:
+        if "abilityGameID" in idx and idx["type"] == mode:
+
+            if idx["targetID"] == void_id:
+                continue
+
+            cid = idx["abilityGameID"]
+            if cid in pct_id:
+
+                cast_name = pct_id[cid]
+                if cast_name in dmg_count:
+                    dmg_count[cast_name][0] += 1
+                    dmg_count[cast_name][1] += idx["amount"]
+                else:
+                    dmg_count[cast_name] = [1, idx["amount"]]
+
+    print(dmg_count)
 
     data = {}
-
-    data["damage"] = pull_player(damage, player, "entries")
-    data["casts"] = pull_player(casts, player, "entries")
-    data["time"] = summary["totalTime"] 
 
     return data
 
@@ -44,7 +85,8 @@ cast_data = []
 for req in req_logs:
     cast_data.append(get_player_data(req[0], req[1], req[2]))
 
-print(cast_data[1])
+# use duration to parse into dps number
+# figure out which buff ids are which, remove additional external buffs
 
 client.close()
 client.save_cache()
