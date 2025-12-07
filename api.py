@@ -13,9 +13,10 @@ def get_pid(name, fight):
             return player.id
 
 
-def get_events(fight, cat):
+def get_events(fight, cat, pid):
     ''''''
-    return fight.events({"dataType": GQLEnum(cat)})
+    return fight.events({"dataType": GQLEnum(cat),
+                         "sourceID": pid})
 
 
 def get_fru_void(fight):
@@ -31,28 +32,23 @@ def get_player_data(rid, number, player):
     report = client.get_report(rid)
     fight = report.fight(number)
     pid = get_pid(player, fight)
-    damage = get_events(fight, "DamageDone")
+    damage = get_events(fight, "DamageDone", pid)
     # casts = get_events(fight, "Casts")
     duration = fight.duration()
     encounter = fight.encounter().name()
 
+    # graph_test = fight.table({"dataType": GQLEnum("Casts")})
+
     void_id = -1
     if encounter == "Futures Rewritten":
         void_id = get_fru_void(fight)
-
-    player_damage = []
-
-    for idx in damage:
-        if "sourceID" in idx:
-            if idx["sourceID"] == pid:
-                player_damage.append(idx)
 
     pct_id = pct_ids()
     dmg_count = {}
     # mode = "calculateddamage"
     mode = "damage"
 
-    for idx in player_damage:
+    for idx in damage:
         if "abilityGameID" in idx and idx["type"] == mode:
 
             if idx["targetID"] == void_id:
@@ -75,15 +71,24 @@ def get_player_data(rid, number, player):
     return data
 
 
-def compare_casts(cast_name, x, y):
+def compare_casts(name, x, y):
     ''''''
+    output = f'{name}'
+    while len(output) < 25:
+        output += ' '
 
+    output += ': '
+    output += f'{x[0]} ({x[1]}) | {y[0]} ({y[1]})'
+
+    print(output)
 
 req_logs = [["kNn2rcQKLZCTgHdh", 46, "Meows For'heals"], ["hdzNJKTx8Grv9tAY", 3, "Mindy Ciao"]]
 cast_data = []
 
 for req in req_logs:
     cast_data.append(get_player_data(req[0], req[1], req[2]))
+
+
 
 # use duration to parse into dps number
 # figure out which buff ids are which, remove additional external buffs
