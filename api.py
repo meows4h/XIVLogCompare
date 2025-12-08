@@ -1,5 +1,5 @@
 from config import CLIENT_ID, CLIENT_SECRET
-from jobref import pct_ids
+from jobref import pct_ids, pictomancer
 from fflogsapi import FFLogsClient, GQLEnum
 
 
@@ -64,31 +64,73 @@ def get_player_data(rid, number, player):
                 else:
                     dmg_count[cast_name] = [1, idx["amount"]]
 
-    print(dmg_count)
-
-    data = {}
-
-    return data
+    return dmg_count
 
 
-def compare_casts(name, x, y):
+def add_plus(var):
+    ''''''
+    if var > 0:
+        return f'+{var}'
+    else:
+        return f'{var}'
+
+
+def compare_casts(name, spells):
     ''''''
     output = f'{name}'
-    while len(output) < 25:
+    while len(output) < 28:
         output += ' '
 
     output += ': '
-    output += f'{x[0]} ({x[1]}) | {y[0]} ({y[1]})'
+    for spell in spells:
+        temp = f'{spell[0]}'
+        if len(temp) == 1:
+            temp += ' '
+        temp += f' ({spell[1]})'
+        while len(temp) < 18:
+            temp += ' '
+        output += temp
+
+    cast_diff = spells[0][0] - spells[1][0]
+    damage_diff = spells[0][1] - spells[1][1]
+
+    cast_disp = add_plus(cast_diff)
+    dmg_disp = add_plus(damage_diff)
+    output += f' | {cast_disp} ({dmg_disp})'
 
     print(output)
+    return damage_diff
+
+
 
 req_logs = [["kNn2rcQKLZCTgHdh", 46, "Meows For'heals"], ["hdzNJKTx8Grv9tAY", 3, "Mindy Ciao"]]
 cast_data = []
 
+title_out = ''
+while len(title_out) < 30:
+    title_out += ' '
+
 for req in req_logs:
     cast_data.append(get_player_data(req[0], req[1], req[2]))
+    temp = req[2]
+    while len(temp) < 18:
+        temp += ' '
+    title_out += temp
 
+print(title_out)
 
+total_dmg = 0
+for meow in pictomancer:
+    spells = []
+    for index in cast_data:
+        spells.append(index[meow])
+    total_dmg += compare_casts(meow, spells)
+
+final_out = ''
+while len(final_out) < 69:
+    final_out += ' '
+final_out += f'{total_dmg}'
+print(final_out)
 
 # use duration to parse into dps number
 # figure out which buff ids are which, remove additional external buffs
