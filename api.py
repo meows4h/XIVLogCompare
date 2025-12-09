@@ -45,8 +45,9 @@ def get_player_data(rid, number, player):
 
     pct_id = pct_ids()
     dmg_count = {}
-    # mode = "calculateddamage"
     mode = "damage"
+
+    print(damage)
 
     for idx in damage:
         if "abilityGameID" in idx and idx["type"] == mode:
@@ -100,7 +101,6 @@ def compare_casts(name, spells):
 
     print(output)
     return damage_diff
-
 
 
 req_logs = [["kNn2rcQKLZCTgHdh", 46, "Meows For'heals"], ["hdzNJKTx8Grv9tAY", 3, "Mindy Ciao"]]
