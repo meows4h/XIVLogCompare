@@ -1,23 +1,73 @@
 import math
+from fflogsapi import GQLEnum
 
 # leaving off here, fix up these methods, interwork these better
 # framework looks like
 # instance holds all values, fights get stored as fight objects to have easier method calls
 # Players have Jobs, Jobs have Attacks and Buffs, Events can have Buffs that need removals that are associated with Attacks, etc etc
 class Fight:
-    def __init__(self, report):
+    def __init__(self, report, p_name):
         self.report = report
+        self.duration = report.duration()
+        self.name = report.encounter().name()
+        self.player = self.get_player(p_name)
+        self.events = self.get_events("DamageDone")
 
-    def get_pid(name, fight):
-    ''''''
-    for player in fight.player_details():
-        if player.name == name:
-            return player.id
+        self.void_ids = []
+        if self.name == "Futures Rewritten":
+            self.void_ids.append(self.get_fru_void())
 
-    def get_events(fight, cat, pid):
+        self.damage, self.casts = self.get_attacks()
+
+    def get_player(self, name):
         ''''''
-        return fight.events({"dataType": GQLEnum(cat),
-                             "sourceID": pid})
+        for player in self.report.player_details():
+            if player.name == name:
+                job = self.get_job(player.job.name)
+                player_out = Player(player.id, job, name)
+                return player_out
+
+    def get_events(self, cat):
+        ''''''
+        events = self.report.events({"dataType": GQLEnum(cat),
+                                     "sourceID": self.player.pid})
+        return events
+    
+    def get_job(self, job_name):
+        ''''''
+        if job_name == "Pictomancer":
+            return Pictomancer()
+        else:
+            return None
+
+    def get_fru_void(self):
+        ''''''
+        enemies = self.report.enemy_npcs()
+        for enemy in enemies:
+            if enemy.game_id == 17828:
+                return enemy.id
+            
+    def get_attacks(self):
+        ''''''
+        dmg_events = []
+        dmg_count = {}
+        for event in self.events:
+            if "abilityGameID" in event and event["type"] == "damage":
+
+                if event["targetID"] in self.void_ids:
+                    continue
+
+                dmg_events.append(event)
+                cid = event["abilityGameID"]
+                if cid in self.player.job.skills:
+                    cast_name = self.player.job.skills[cid].name
+                    if cast_name in dmg_count:
+                        dmg_count[cast_name][0] += 1
+                        dmg_count[cast_name][1] += event["amount"]
+                    else:
+                        dmg_count[cast_name] = [1, event["amount"]]
+
+        return dmg_events, dmg_count
 
 
 class Attack:
@@ -47,25 +97,21 @@ class Buff:
 
 
 class Player:
-    def __init__(self, pid):
+    def __init__(self, pid, job, name):
         self.pid = pid
+        self.job = job
+        self.name = name
 
 
 class Instance:
-    def __init__(self, name, pids, duration):
-        self.name = name
-
-        self.players = []
-        for pid in pids:
-            self.players.append(Player(pid))
-
-        self.duration = duration
+    def __init__(self):
+        self.fights = []
 
         self.buffs = {
             1002599: Buff("Arcane Circle", 1.03),
             1002218: Buff("Army's Paeon", 0.03, bonus='direct'),
-            1000141: Buff("Battle Voice", bonus='direct'),
-            1002217: Buff("Mage's Ballad" 1.01),
+            1000141: Buff("Battle Voice", 0.20, bonus='direct'),
+            1002217: Buff("Mage's Ballad", 1.01),
             1000049: Buff("Medicated", 1.08),
             1002964: Buff("Radiant Finale", 1.06),
             1003685: Buff("Starry Muse", 1.05),
@@ -78,16 +124,41 @@ class Instance:
             1001822: Buff("Technical Finish", 1.05),
             1003889: Buff("The Spear", 1.06),
             1001221: Buff("Chain Stratagem", 0.1, bonus='crit', target=True),
-            1002198: Buff("Vulnerability Down", target=True),
+            1002198: Buff("Vulnerability Down", 1.00, target=True),
             1003849: Buff("Dokumori", 1.05, target=True)
         }
 
-        def get_fru_void(fight):
-            ''''''
-            enemies = fight.enemy_npcs()
-            for enemy in enemies:
-                if enemy.game_id == 17828:
-            return enemy.id
+    def set_pids(self, pids):
+        ''''''
+        for pid in pids:
+            self.players.append(Player(pid))
+
+    def add_fight(self, fight):
+        ''''''
+        self.fights.append(fight)
+
+    def print_compare(self):
+        ''''''
+        main_job = self.fights[0].player.job
+        output = {}
+        for cid in main_job.skills:
+            attack = main_job.skills[cid].name
+            output[attack] = []
+
+            for fight in self.fights:
+                output[attack].append(fight.casts[attack])
+        
+        for cast in output:
+            base_casts = 0
+            base_dmg = 0
+            for idx, amt in enumerate(output[cast]):
+                if idx == 0:
+                    base_casts = amt[0]
+                    base_dmg = amt[1]
+                    print(f"{cast}: {base_casts} ({base_dmg}) | ", end="")
+                else:
+                    print(f"{amt[0] - base_casts} ({amt[1] - base_dmg}) | ", end="")
+            print("")
 
 
 class Pictomancer:
