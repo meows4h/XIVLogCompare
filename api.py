@@ -4,7 +4,7 @@ import classes as cl
 
 client = FFLogsClient(CLIENT_ID, CLIENT_SECRET)
 
-req_logs = [["kNn2rcQKLZCTgHdh", 46, "Meows For'heals"], ["hdzNJKTx8Grv9tAY", 3, "Mindy Ciao"]]
+req_logs = [["kNn2rcQKLZCTgHdh", 46, "Meows For'heals"], ["hdzNJKTx8Grv9tAY", 3, "Mindy Ciao"], ["Dwf1gAqJ29GLhF3W", 10, "Shortstack The-great"], ["ThDVN4H9Cab6Z21d", 141, "Meows For'heals"]]
 
 compare_instance = cl.Instance()
 for req in req_logs:
@@ -14,7 +14,7 @@ for req in req_logs:
 
     report = client.get_report(rid)
     fight_report = report.fight(num)
-    fight = cl.Fight(fight_report, player_name)
+    fight = cl.Fight(fight_report, player_name, rid, num)
     compare_instance.add_fight(fight)
 
 for fight in compare_instance.fights:
